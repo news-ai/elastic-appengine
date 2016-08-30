@@ -34,12 +34,13 @@ type ElasticResponse struct {
 }
 
 type Elastic struct {
-	BaseURL string
+	BaseURL      string
+	ResourceType string
 }
 
-func (e *Elastic) Query(c context.Context, resourceType string, offset int, limit int) (interface{}, error) {
+func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (interface{}, error) {
 	client := urlfetch.Client(c)
-	resp, err := client.Get(e.BaseURL + "/" + resourceType + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search)
+	resp, err := client.Get(e.BaseURL + "/" + e.ResourceType + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search)
 	if err != nil {
 		log.Errorf(c, "%v", err)
 		return nil, err
