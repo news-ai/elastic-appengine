@@ -2,13 +2,27 @@ package elastic
 
 import (
 	"encoding/json"
-	"errors"
 	"strconv"
 
 	"golang.org/x/net/context"
 
+	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 )
+
+type ElasticHits struct {
+	Total    int     `json:"total"`
+	MaxScore float64 `json:"max_score"`
+	Hits     []struct {
+		Index  string  `json:"_index"`
+		Type   string  `json:"_type"`
+		ID     string  `json:"_id"`
+		Score  float64 `json:"_score"`
+		Source struct {
+			Data interface{} `json:"data"`
+		} `json:"_source"`
+	} `json:"hits"`
+}
 
 type ElasticResponse struct {
 	Took     int  `json:"took"`
@@ -18,19 +32,7 @@ type ElasticResponse struct {
 		Successful int `json:"successful"`
 		Failed     int `json:"failed"`
 	} `json:"_shards"`
-	Hits struct {
-		Total    int     `json:"total"`
-		MaxScore float64 `json:"max_score"`
-		Hits     []struct {
-			Index  string  `json:"_index"`
-			Type   string  `json:"_type"`
-			ID     string  `json:"_id"`
-			Score  float64 `json:"_score"`
-			Source struct {
-				Data interface{} `json:"data"`
-			} `json:"_source"`
-		} `json:"hits"`
-	} `json:"hits"`
+	Hits ElasticHits `json:"hits"`
 }
 
 type Elastic struct {
@@ -38,12 +40,13 @@ type Elastic struct {
 	ResourceType string
 }
 
-func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (interface{}, error) {
+func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (ElasticHits, error) {
 	client := urlfetch.Client(c)
-	resp, err := client.Get(e.BaseURL + "/" + e.ResourceType + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search)
+	getUrl := e.BaseURL + "/" + e.ResourceType + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search
+	resp, err := client.Get(getUrl)
 	if err != nil {
 		log.Errorf(c, "%v", err)
-		return nil, err
+		return ElasticHits{}, err
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -51,8 +54,8 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, search string)
 	err = decoder.Decode(&elasticResponse)
 	if err != nil {
 		log.Errorf(c, "%v", err)
-		return nil, err
+		return ElasticHits{}, err
 	}
 
-	return elasticResponse.Hits.Hits, nil
+	return elasticResponse.Hits, nil
 }
