@@ -2,7 +2,9 @@ package elastic
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
+	"strings"
 
 	"golang.org/x/net/context"
 
@@ -36,13 +38,14 @@ type ElasticResponse struct {
 }
 
 type Elastic struct {
-	BaseURL      string
-	ResourceType string
+	BaseURL string
+	Index   string
+	Type    string
 }
 
 func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (ElasticHits, error) {
 	client := urlfetch.Client(c)
-	getUrl := e.BaseURL + "/" + e.ResourceType + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search
+	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search
 	resp, err := client.Get(getUrl)
 	if err != nil {
 		log.Errorf(c, "%v", err)
@@ -58,4 +61,26 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, search string)
 	}
 
 	return elasticResponse.Hits, nil
+}
+
+func (e *Elastic) Add(c context.Context, data interface{}) (bool, error) {
+	client := urlfetch.Client(c)
+	postUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/"
+
+	jsonData := strings.NewReader(data)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := client.Post(postUrl, "application/json", jsonData)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return false, err
+	}
+
+	if resp.StatusCode == 200 {
+		return true, nil
+	}
+
+	return false, errors.New("Error in POSTing data")
 }
