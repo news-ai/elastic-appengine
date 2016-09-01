@@ -63,16 +63,10 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, search string)
 	return elasticResponse.Hits, nil
 }
 
-func (e *Elastic) Add(c context.Context, data interface{}) (bool, error) {
+func (e *Elastic) Add(c context.Context, data *strings.Reader) (bool, error) {
 	client := urlfetch.Client(c)
 	postUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/"
-
-	jsonData := strings.NewReader(data)
-	if err != nil {
-		return false, err
-	}
-
-	resp, err := client.Post(postUrl, "application/json", jsonData)
+	resp, err := client.Post(postUrl, "application/json", data)
 	if err != nil {
 		log.Errorf(c, "%v", err)
 		return false, err
