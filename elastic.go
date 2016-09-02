@@ -3,6 +3,8 @@ package elastic
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -46,7 +48,13 @@ type Elastic struct {
 func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (ElasticHits, error) {
 	client := urlfetch.Client(c)
 	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search
-	resp, err := client.Get(getUrl)
+
+	req, _ := http.NewRequest("GET", getUrl, nil)
+	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
+		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Errorf(c, "%v", err)
 		return ElasticHits{}, err
