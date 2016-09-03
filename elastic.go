@@ -15,13 +15,26 @@ import (
 	"google.golang.org/appengine/urlfetch"
 )
 
+type ElasticCreatedByQuery struct {
+	Term struct {
+		CreatedBy int64 `json:"data.CreatedBy"`
+	} `json:"term"`
+}
+
+type ElasticMatchQuery struct {
+	Match struct {
+		All string `json:"_all"`
+	} `json:"match"`
+}
+
 type ElasticQuery struct {
 	Query struct {
-		MatchAll struct {
-		} `json:"match_all"`
-		Size int `json:"size"`
-		From int `json:"from"`
+		Bool struct {
+			Must []interface{} `json:"must"`
+		} `json:"bool"`
 	} `json:"query"`
+	Size int `json:"size"`
+	From int `json:"from"`
 }
 
 type ElasticHits struct {
