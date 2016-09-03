@@ -19,6 +19,8 @@ type ElasticQuery struct {
 	Query struct {
 		MatchAll struct {
 		} `json:"match_all"`
+		Size int `json:"size"`
+		From int `json:"from"`
 	} `json:"query"`
 }
 
@@ -79,7 +81,7 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 	return elasticResponse.Hits, nil
 }
 
-func (e *Elastic) QueryStruct(c context.Context, offset int, limit int, searchQuery ElasticQuery) (ElasticHits, error) {
+func (e *Elastic) QueryStruct(c context.Context, searchQuery ElasticQuery) (ElasticHits, error) {
 	client := urlfetch.Client(c)
 	getUrl := e.BaseURL + "/" + e.Index + "/_search"
 
