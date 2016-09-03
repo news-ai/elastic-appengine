@@ -1,6 +1,7 @@
 package elastic
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,6 +14,13 @@ import (
 	"google.golang.org/appengine/log"
 	"google.golang.org/appengine/urlfetch"
 )
+
+type ElasticQuery struct {
+	Query struct {
+		MatchAll struct {
+		} `json:"match_all"`
+	} `json:"query"`
+}
 
 type ElasticHits struct {
 	Total    int     `json:"total"`
@@ -50,6 +58,39 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&" + searchQuery
 
 	req, _ := http.NewRequest("GET", getUrl, nil)
+	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
+		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	var elasticResponse ElasticResponse
+	err = decoder.Decode(&elasticResponse)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+
+	return elasticResponse.Hits, nil
+}
+
+func (e *Elastic) QueryStruct(c context.Context, offset int, limit int, searchQuery ElasticQuery) (ElasticHits, error) {
+	client := urlfetch.Client(c)
+	getUrl := e.BaseURL + "/" + e.Index + "/_search"
+
+	SearchQuery, err := json.Marshal(searchQuery)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+	readerQuery := bytes.NewReader(SearchQuery)
+
+	req, _ := http.NewRequest("POST", getUrl, readerQuery)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
 		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
 	}
