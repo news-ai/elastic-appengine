@@ -45,9 +45,9 @@ type Elastic struct {
 	Type    string
 }
 
-func (e *Elastic) Query(c context.Context, offset int, limit int, search string) (ElasticHits, error) {
+func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery string) (ElasticHits, error) {
 	client := urlfetch.Client(c)
-	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&q=data.Name:" + search
+	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&" + searchQuery
 
 	req, _ := http.NewRequest("GET", getUrl, nil)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
