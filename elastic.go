@@ -21,6 +21,12 @@ type ElasticCreatedByQuery struct {
 	} `json:"term"`
 }
 
+type ElasticListIdQuery struct {
+	Term struct {
+		ListId int64 `json:"data.ListId"`
+	} `json:"term"`
+}
+
 type ElasticMatchQuery struct {
 	Match struct {
 		All string `json:"_all"`
