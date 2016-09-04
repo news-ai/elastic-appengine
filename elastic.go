@@ -15,18 +15,6 @@ import (
 	"google.golang.org/appengine/urlfetch"
 )
 
-type ElasticCreatedByQuery struct {
-	Term struct {
-		CreatedBy int64 `json:"data.CreatedBy"`
-	} `json:"term"`
-}
-
-type ElasticListIdQuery struct {
-	Term struct {
-		ListId int64 `json:"data.ListId"`
-	} `json:"term"`
-}
-
 type ElasticMatchQuery struct {
 	Match struct {
 		All string `json:"_all"`
