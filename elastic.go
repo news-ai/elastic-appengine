@@ -134,5 +134,30 @@ func (e *Elastic) Add(c context.Context, data *strings.Reader) (bool, error) {
 		return true, nil
 	}
 
-	return false, errors.New("Error in POSTing data")
+	return false, errors.New("Error in POSTing the data")
+}
+
+func (e *Elastic) Delete(c context.Context, resourceId int64) (bool, error) {
+	client := urlfetch.Client(c)
+	ResourceId := strconv.FormatInt(resourceId, 10)
+	elasticHit, err := e.Query(c, 0, 1, "q=data.Name:"+ResourceId)
+	if err != nil {
+		return false, err
+	}
+	elasticId := elasticHit.Hits[0].ID
+	deleteUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/" + elasticId
+
+	req, _ := http.NewRequest("DELETE", deleteUrl, nil)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return false, err
+	}
+
+	if resp.StatusCode == 200 {
+		return true, nil
+	}
+
+	return false, errors.New("Error in DELETEing the data")
 }
