@@ -3,11 +3,9 @@ package elastic
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"golang.org/x/net/context"
 
@@ -29,6 +27,12 @@ type ElasticQuery struct {
 	} `json:"query"`
 	Size int `json:"size"`
 	From int `json:"from"`
+}
+
+type ElasticQueryWithSort struct {
+	ElasticQuery
+
+	Sort []interface{} `json:"sort"`
 }
 
 type ElasticHits struct {
@@ -88,16 +92,9 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 	return elasticResponse.Hits, nil
 }
 
-func (e *Elastic) QueryStruct(c context.Context, searchQuery ElasticQuery) (ElasticHits, error) {
+func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (ElasticHits, error) {
 	client := urlfetch.Client(c)
 	getUrl := e.BaseURL + "/" + e.Index + "/_search"
-
-	SearchQuery, err := json.Marshal(searchQuery)
-	if err != nil {
-		log.Errorf(c, "%v", err)
-		return ElasticHits{}, err
-	}
-	readerQuery := bytes.NewReader(SearchQuery)
 
 	req, _ := http.NewRequest("POST", getUrl, readerQuery)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
@@ -119,4 +116,24 @@ func (e *Elastic) QueryStruct(c context.Context, searchQuery ElasticQuery) (Elas
 	}
 
 	return elasticResponse.Hits, nil
+}
+
+func (e *Elastic) QueryStruct(c context.Context, searchQuery ElasticQuery) (ElasticHits, error) {
+	SearchQuery, err := json.Marshal(searchQuery)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+	readerQuery := bytes.NewReader(SearchQuery)
+	return e.performQuery(c, readerQuery)
+}
+
+func (e *Elastic) QueryStructWithSort(c context.Context, searchQuery ElasticQueryWithSort) (ElasticHits, error) {
+	SearchQuery, err := json.Marshal(searchQuery)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+	readerQuery := bytes.NewReader(SearchQuery)
+	return e.performQuery(c, readerQuery)
 }
