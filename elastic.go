@@ -35,6 +35,21 @@ type ElasticQueryWithSort struct {
 	Sort []interface{} `json:"sort"`
 }
 
+type ElasticFilterWithSort struct {
+	Query struct {
+		Bool struct {
+			Should             []interface{} `json:"should"`
+			MinimumShouldMatch string        `json:"minimum_should_match"`
+		} `json:"bool"`
+	} `json:"query"`
+
+	Size     int `json:"size"`
+	From     int `json:"from"`
+	MinScore int `json:"min_score"`
+
+	Sort []interface{} `json:"sort"`
+}
+
 type ElasticHits struct {
 	Total    int     `json:"total"`
 	MaxScore float64 `json:"max_score"`
@@ -118,22 +133,13 @@ func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (El
 	return elasticResponse.Hits, nil
 }
 
-func (e *Elastic) QueryStruct(c context.Context, searchQuery ElasticQuery) (ElasticHits, error) {
+func (e *Elastic) QueryStruct(c context.Context, searchQuery interface{}) (ElasticHits, error) {
 	SearchQuery, err := json.Marshal(searchQuery)
 	if err != nil {
 		log.Errorf(c, "%v", err)
 		return ElasticHits{}, err
 	}
-	readerQuery := bytes.NewReader(SearchQuery)
-	return e.performQuery(c, readerQuery)
-}
-
-func (e *Elastic) QueryStructWithSort(c context.Context, searchQuery ElasticQueryWithSort) (ElasticHits, error) {
-	SearchQuery, err := json.Marshal(searchQuery)
-	if err != nil {
-		log.Errorf(c, "%v", err)
-		return ElasticHits{}, err
-	}
+	log.Infof(c, "%v", string(SearchQuery))
 	readerQuery := bytes.NewReader(SearchQuery)
 	return e.performQuery(c, readerQuery)
 }
