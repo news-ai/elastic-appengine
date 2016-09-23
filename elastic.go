@@ -109,7 +109,7 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 
 func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (ElasticHits, error) {
 	client := urlfetch.Client(c)
-	getUrl := e.BaseURL + "/" + e.Index + "/_search"
+	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_search"
 
 	req, _ := http.NewRequest("POST", getUrl, readerQuery)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
