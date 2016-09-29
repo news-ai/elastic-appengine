@@ -43,9 +43,9 @@ type ElasticFilterWithSort struct {
 		} `json:"bool"`
 	} `json:"query"`
 
-	Size     int `json:"size"`
-	From     int `json:"from"`
-	MinScore int `json:"min_score"`
+	Size     int     `json:"size"`
+	From     int     `json:"from"`
+	MinScore float32 `json:"min_score"`
 
 	Sort []interface{} `json:"sort"`
 }
