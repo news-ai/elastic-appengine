@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"golang.org/x/net/context"
 
@@ -82,7 +83,8 @@ type Elastic struct {
 }
 
 func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery string) (ElasticHits, error) {
-	client := urlfetch.Client(c)
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
+	client := urlfetch.Client(contextWithTimeout)
 	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&" + searchQuery
 
 	req, _ := http.NewRequest("GET", getUrl, nil)
@@ -108,7 +110,8 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 }
 
 func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (ElasticHits, error) {
-	client := urlfetch.Client(c)
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
+	client := urlfetch.Client(contextWithTimeout)
 	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_search"
 
 	req, _ := http.NewRequest("POST", getUrl, readerQuery)
