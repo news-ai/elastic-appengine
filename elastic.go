@@ -65,6 +65,25 @@ type ElasticHits struct {
 	} `json:"hits"`
 }
 
+type ElasticHitsMGet struct {
+	Index   string `json:"_index"`
+	Type    string `json:"_type"`
+	ID      string `json:"_id"`
+	Version int    `json:"_version"`
+	Found   bool   `json:"found"`
+	Source  struct {
+		Data struct {
+			Username  string `json:"Username"`
+			CreatedAt string `json:"CreatedAt"`
+			Followers int    `json:"Followers"`
+			Following int    `json:"Following"`
+			Likes     int    `json:"Likes"`
+			Comments  int    `json:"Comments"`
+			Posts     int    `json:"Posts"`
+		} `json:"data"`
+	} `json:"_source"`
+}
+
 type ElasticResponse struct {
 	Took     int  `json:"took"`
 	TimedOut bool `json:"timed_out"`
@@ -74,6 +93,10 @@ type ElasticResponse struct {
 		Failed     int `json:"failed"`
 	} `json:"_shards"`
 	Hits ElasticHits `json:"hits"`
+}
+
+type ElasticResponseMGet struct {
+	Docs []ElasticHitsMGet `json:"docs"`
 }
 
 type Elastic struct {
@@ -110,7 +133,7 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 }
 
 func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (ElasticHits, error) {
-	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*30)
 	client := urlfetch.Client(contextWithTimeout)
 	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_search"
 
@@ -136,6 +159,33 @@ func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (El
 	return elasticResponse.Hits, nil
 }
 
+func (e *Elastic) performMGetQuery(c context.Context, readerQuery *bytes.Reader) ([]ElasticHitsMGet, error) {
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*30)
+	client := urlfetch.Client(contextWithTimeout)
+	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_mget"
+
+	req, _ := http.NewRequest("POST", getUrl, readerQuery)
+	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
+		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return []ElasticHitsMGet{}, err
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	var elasticResponse ElasticResponseMGet
+	err = decoder.Decode(&elasticResponse)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return []ElasticHitsMGet{}, err
+	}
+
+	return elasticResponse.Docs, nil
+}
+
 func (e *Elastic) QueryStruct(c context.Context, searchQuery interface{}) (ElasticHits, error) {
 	SearchQuery, err := json.Marshal(searchQuery)
 	if err != nil {
@@ -145,4 +195,15 @@ func (e *Elastic) QueryStruct(c context.Context, searchQuery interface{}) (Elast
 	log.Infof(c, "%v", string(SearchQuery))
 	readerQuery := bytes.NewReader(SearchQuery)
 	return e.performQuery(c, readerQuery)
+}
+
+func (e *Elastic) QueryStructMGet(c context.Context, searchQuery interface{}) ([]ElasticHitsMGet, error) {
+	SearchQuery, err := json.Marshal(searchQuery)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return []ElasticHitsMGet{}, err
+	}
+	log.Infof(c, "%v", string(SearchQuery))
+	readerQuery := bytes.NewReader(SearchQuery)
+	return e.performMGetQuery(c, readerQuery)
 }
