@@ -72,15 +72,7 @@ type ElasticHitsMGet struct {
 	Version int    `json:"_version"`
 	Found   bool   `json:"found"`
 	Source  struct {
-		Data struct {
-			Username  string `json:"Username"`
-			CreatedAt string `json:"CreatedAt"`
-			Followers int    `json:"Followers"`
-			Following int    `json:"Following"`
-			Likes     int    `json:"Likes"`
-			Comments  int    `json:"Comments"`
-			Posts     int    `json:"Posts"`
-		} `json:"data"`
+		Data interface{} `json:"data"`
 	} `json:"_source"`
 }
 
