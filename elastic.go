@@ -30,6 +30,17 @@ type ElasticQuery struct {
 	From int `json:"from"`
 }
 
+type ElasticQueryMust struct {
+	Query struct {
+		Bool struct {
+			Must []interface{} `json:"must"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size     int     `json:"size"`
+	From     int     `json:"from"`
+	MinScore float32 `json:"min_score"`
+}
+
 type ElasticQueryWithSort struct {
 	ElasticQuery
 
@@ -95,6 +106,33 @@ type Elastic struct {
 	BaseURL string
 	Index   string
 	Type    string
+}
+
+func (e *Elastic) GetDataFromId(c context.Context, id string) (ElasticHitsMGet, error) {
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
+	client := urlfetch.Client(contextWithTimeout)
+	getUrl := e.BaseURL + "/" + e.Index + "/" + id
+
+	req, _ := http.NewRequest("GET", getUrl, nil)
+	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
+		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHitsMGet{}, err
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	var elasticResponse ElasticHitsMGet
+	err = decoder.Decode(&elasticResponse)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHitsMGet{}, err
+	}
+
+	return elasticResponse, nil
 }
 
 func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery string) (ElasticHits, error) {
