@@ -47,6 +47,18 @@ type ElasticQueryWithSort struct {
 	Sort []interface{} `json:"sort"`
 }
 
+type ElasticQueryWithShould struct {
+	Query struct {
+		Bool struct {
+			Must   []interface{} `json:"must"`
+			Should []interface{} `json:"should"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size int           `json:"size"`
+	From int           `json:"from"`
+	Sort []interface{} `json:"sort"`
+}
+
 type ElasticFilterWithSort struct {
 	Query struct {
 		Bool struct {
