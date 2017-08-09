@@ -41,6 +41,36 @@ type ElasticQueryMust struct {
 	MinScore float32 `json:"min_score"`
 }
 
+type ElasticQueryMustShould struct {
+	Query struct {
+		Bool struct {
+			Must   []interface{} `json:"must"`
+			Should []interface{} `json:"should"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size     int     `json:"size"`
+	From     int     `json:"from"`
+	MinScore float32 `json:"min_score"`
+}
+
+type ElasticQueryMustWithSort struct {
+	Query struct {
+		Bool struct {
+			Must []interface{} `json:"must"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size     int           `json:"size"`
+	From     int           `json:"from"`
+	MinScore float32       `json:"min_score"`
+	Sort     []interface{} `json:"sort"`
+}
+
+type ElasticQueryWithSortShould struct {
+	ElasticQueryMustShould
+
+	Sort []interface{} `json:"sort"`
+}
+
 type ElasticQueryWithSort struct {
 	ElasticQuery
 
@@ -52,6 +82,17 @@ type ElasticQueryWithShould struct {
 		Bool struct {
 			Must   []interface{} `json:"must"`
 			Should []interface{} `json:"should"`
+		} `json:"bool"`
+	} `json:"query"`
+	Size int           `json:"size"`
+	From int           `json:"from"`
+	Sort []interface{} `json:"sort"`
+}
+
+type ElasticQueryWithMust struct {
+	Query struct {
+		Bool struct {
+			Must []interface{} `json:"must"`
 		} `json:"bool"`
 	} `json:"query"`
 	Size int           `json:"size"`
@@ -150,7 +191,7 @@ func (e *Elastic) GetDataFromId(c context.Context, id string) (ElasticHitsMGet, 
 func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery string) (ElasticHits, error) {
 	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
 	client := urlfetch.Client(contextWithTimeout)
-	getUrl := e.BaseURL + "/" + e.Index + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&" + searchQuery
+	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_search?size=" + strconv.Itoa(limit) + "&from=" + strconv.Itoa(offset) + "&" + searchQuery
 
 	req, _ := http.NewRequest("GET", getUrl, nil)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
@@ -174,10 +215,41 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 	return elasticResponse.Hits, nil
 }
 
-func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader) (ElasticHits, error) {
+func (e *Elastic) GetMapping(c context.Context) (interface{}, error) {
+	contextWithTimeout, _ := context.WithTimeout(c, time.Second*15)
+	client := urlfetch.Client(contextWithTimeout)
+	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_mapping"
+
+	req, _ := http.NewRequest("GET", getUrl, nil)
+	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
+		req.SetBasicAuth(os.Getenv("ELASTIC_USER"), os.Getenv("ELASTIC_PASS"))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return nil, err
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	var elasticResponse interface{}
+	err = decoder.Decode(&elasticResponse)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return nil, err
+	}
+
+	return elasticResponse, nil
+}
+
+func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader, searchQuery string) (ElasticHits, error) {
 	contextWithTimeout, _ := context.WithTimeout(c, time.Second*30)
 	client := urlfetch.Client(contextWithTimeout)
 	getUrl := e.BaseURL + "/" + e.Index + "/" + e.Type + "/_search"
+
+	if searchQuery != "" {
+		getUrl += "?" + searchQuery
+	}
 
 	req, _ := http.NewRequest("POST", getUrl, readerQuery)
 	if os.Getenv("ELASTIC_PASS") != "" && os.Getenv("ELASTIC_PASS") != "" {
@@ -236,7 +308,18 @@ func (e *Elastic) QueryStruct(c context.Context, searchQuery interface{}) (Elast
 	}
 	log.Infof(c, "%v", string(SearchQuery))
 	readerQuery := bytes.NewReader(SearchQuery)
-	return e.performQuery(c, readerQuery)
+	return e.performQuery(c, readerQuery, "")
+}
+
+func (e *Elastic) QueryStructWithSearchQueryUrl(c context.Context, searchQuery interface{}, searchQueryUrl string) (ElasticHits, error) {
+	SearchQuery, err := json.Marshal(searchQuery)
+	if err != nil {
+		log.Errorf(c, "%v", err)
+		return ElasticHits{}, err
+	}
+	log.Infof(c, "%v", string(SearchQuery))
+	readerQuery := bytes.NewReader(SearchQuery)
+	return e.performQuery(c, readerQuery, searchQueryUrl)
 }
 
 func (e *Elastic) QueryStructMGet(c context.Context, searchQuery interface{}) ([]ElasticHitsMGet, error) {
