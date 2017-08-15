@@ -176,6 +176,7 @@ func (e *Elastic) GetDataFromId(c context.Context, id string) (ElasticHitsMGet, 
 		log.Errorf(c, "%v", err)
 		return ElasticHitsMGet{}, err
 	}
+	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	var elasticResponse ElasticHitsMGet
@@ -203,6 +204,7 @@ func (e *Elastic) Query(c context.Context, offset int, limit int, searchQuery st
 		log.Errorf(c, "%v", err)
 		return ElasticHits{}, err
 	}
+	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	var elasticResponse ElasticResponse
@@ -230,6 +232,7 @@ func (e *Elastic) GetMapping(c context.Context) (interface{}, error) {
 		log.Errorf(c, "%v", err)
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	var elasticResponse interface{}
@@ -261,6 +264,7 @@ func (e *Elastic) performQuery(c context.Context, readerQuery *bytes.Reader, sea
 		log.Errorf(c, "%v", err)
 		return ElasticHits{}, err
 	}
+	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	var elasticResponse ElasticResponse
@@ -288,6 +292,7 @@ func (e *Elastic) performMGetQuery(c context.Context, readerQuery *bytes.Reader)
 		log.Errorf(c, "%v", err)
 		return []ElasticHitsMGet{}, err
 	}
+	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
 	var elasticResponse ElasticResponseMGet
